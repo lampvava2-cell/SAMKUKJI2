@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>삼국지2 리마스터</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#d8a94b;--gold2:#f3d08a;--line:#2e3a4a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#07090c;color:#e9e4d8;font-family:'Noto Sans KR',system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+#bar{display:flex;align-items:center;gap:8px;padding:5px 10px;background:linear-gradient(180deg,#151b24,#0d1117);border-bottom:1px solid var(--line);min-height:38px}
+#bar .t{font-family:'Noto Serif KR',serif;font-weight:900;color:var(--gold2);letter-spacing:1px;font-size:15px}
+#bar .s{font-size:10.5px;color:#7d8794;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bar .chip{font-size:11px;border:1px solid var(--line);border-radius:20px;padding:2px 9px;color:#c9d1db}
+#menuBtn{width:34px;height:30px;border-radius:9px;border:1px solid var(--line);background:#121820;color:#ddd;font-size:16px}
+#main{flex:1;display:flex;flex-direction:column;min-height:0}
+#screen{flex:none;display:flex;align-items:center;justify-content:center;background:#000;position:relative;width:100%;aspect-ratio:4/3;max-height:62vh}
+#scrbox{position:relative;box-shadow:0 0 0 1px #1c2430,0 10px 40px #000}
+#scrbox canvas{position:absolute;left:0;top:0}
+#raw{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;display:none}
+#pad{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(5,1fr);gap:7px;padding:9px 10px calc(10px + env(safe-area-inset-bottom));background:radial-gradient(ellipse at 50% 0%,#18202b,#0a0d12 70%);min-height:0}
+.k{border:1px solid #334155;border-radius:14px;background:linear-gradient(180deg,#252f3d,#171e28);color:#f0ece2;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;box-shadow:0 2px 0 #0b0f14,inset 0 1px 0 #ffffff10;touch-action:none;padding:0}
+.k b{font-size:22px;font-weight:700;line-height:1}
+.k i{font-style:normal;font-size:11px;color:#8fa0b4;margin-top:2px}
+.k.dn{transform:translateY(1px);background:linear-gradient(180deg,#3a4658,#273140);box-shadow:none}
+.k-sys b{font-size:14px;color:#c9d1db}
+.k-yn b{font-size:20px;color:#8fd3ff}
+.k-enter{grid-row:4/6;grid-column:4;background:linear-gradient(180deg,#e2b65c,#a8782d);border-color:#f3d08a}
+.k-enter b{color:#1b1206;font-size:16px}
+.k-zero{grid-column:1/4}
+@media (orientation:landscape){
+ #main{flex-direction:row}
+ #screen{height:100%;width:auto;aspect-ratio:auto;flex:1;max-height:none}
+ #pad{flex:none;width:min(42vw,340px);grid-template-rows:repeat(5,1fr)}
+ .k b{font-size:18px}
+}
+#start{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 35%,#2a1d14 0%,#07090c 65%);transition:opacity .5s;cursor:pointer}
+#start.off{opacity:0;pointer-events:none}
+#start .seal{width:70px;height:70px;border:3px solid #c8463c;color:#c8463c;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Noto Serif KR',serif;font-weight:900;font-size:28px;transform:rotate(-6deg);margin-bottom:16px}
+#start h1{font-family:'Noto Serif KR',serif;font-weight:900;font-size:50px;margin:0;letter-spacing:5px;background:linear-gradient(180deg,#fff3cf,#d8a94b 55%,#8a5a1c);-webkit-background-clip:text;background-clip:text;color:transparent}
+#start .sub{font-family:'Noto Serif KR',serif;color:var(--gold);letter-spacing:9px;margin:6px 0 30px;font-size:13px}
+#start .go{border:1px solid #f3d08a;background:linear-gradient(180deg,#e2b65c,#a8782d);color:#1b1206;font-weight:700;border-radius:14px;padding:14px 36px;font-size:17px}
+#start .note{margin-top:22px;font-size:12px;color:#7d8794;text-align:center;line-height:1.7;padding:0 24px}
+#menu{position:fixed;inset:0;z-index:40;background:#000a;display:none;align-items:flex-end;justify-content:center}
+#menu.on{display:flex}
+#menu .sheet{width:min(560px,100%);max-height:85vh;overflow:auto;background:linear-gradient(180deg,#1f2733,#151b24);border:1px solid #3a4658;border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom))}
+#menu h2{margin:0 0 6px;font-family:'Noto Serif KR',serif;color:var(--gold2);font-size:18px;display:flex;justify-content:space-between;align-items:center}
+#menu h3{margin:14px 0 6px;font-size:13px;color:#9aa3ae;font-weight:500}
+.mrow{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;background:#202937;border:1px solid #334155;border-radius:12px;margin-bottom:6px;font-size:14.5px;cursor:pointer}
+.mrow b{font-size:12px;padding:3px 10px;border-radius:20px;background:#0d1117;color:#9aa3ae;border:1px solid #334155}
+.mrow b.on{color:#1b1206;background:var(--gold);border-color:var(--gold)}
+.hint{font-size:12px;color:#9aa3ae;line-height:1.6;margin-bottom:6px}
+.mclose{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:#121820;color:#ddd}
+#toast{position:fixed;left:50%;top:48px;transform:translateX(-50%) translateY(-10px);background:#0e131aee;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:8px 14px;font-size:13px;opacity:0;transition:.25s;z-index:50;pointer-events:none}
+#toast.on{opacity:1;transform:translateX(-50%)}
+#txtbox{position:fixed;inset:0;z-index:45;background:#000b;display:none;align-items:center;justify-content:center}
+#txtbox.on{display:flex}
+#txtbox .b{background:#1f2733;border:1px solid #3a4658;border-radius:16px;padding:16px;width:min(360px,90vw)}
+#txtbox input{width:100%;font-size:18px;padding:10px;border-radius:10px;border:1px solid #445;background:#0d1117;color:#fff;margin:10px 0}
+#txtbox button{font-family:inherit;font-size:15px;padding:10px 16px;border-radius:10px;border:1px solid #445;background:#2a3443;color:#fff}
+#txtbox button.g{background:linear-gradient(180deg,#e2b65c,#a8782d);color:#1b1206;border-color:#f3d08a;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar"><span class="t">三國志 Ⅱ</span><span class="s" id="savestate">원작 그대로 · 리마스터</span><span class="chip" id="sndlabel">현대 음악</span><button id="menuBtn">☰</button></div>
+  <div id="main">
+    <div id="screen"><div id="scrbox"><canvas id="gl"></canvas><canvas id="ov"></canvas><canvas id="raw"></canvas></div></div>
+    <div id="pad"></div>
+  </div>
+</div>
+<div id="start"><div class="seal">三國</div><h1>삼국지 Ⅱ</h1><div class="sub">REMASTER</div><button class="go">터치해서 시작</button>
+  <div class="note">원작 게임을 그대로 실행합니다 · 그래픽과 사운드만 리마스터<br>가로로 돌리면 화면이 더 커집니다</div></div>
+<div id="menu"><div class="sheet"><h2>설정 <button class="mclose">✕</button></h2><div class="mbody"></div></div></div>
+<div id="txtbox"><div class="b"><div style="font-weight:700">문자 입력 (파일명 등)</div><input id="txt" maxlength="8" autocomplete="off" autocapitalize="characters"><div style="display:flex;gap:8px;justify-content:flex-end"><button id="txtx">취소</button><button id="txtgo" class="g">입력 + Enter</button></div></div></div>
+<div id="toast"></div>
+<script src="emulators/emulators.js"></script>
+<script src="modern_audio.js"></script>
+<script src="modern.js"></script>
+<script src="remaster.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
