@@ -74,7 +74,16 @@ RM.detectFaces=function(f){ const out=[]; if(!RM.faceKey) return out; const take
   const res=[]; for(const d of out){ if(!res.some(e=>Math.abs(e.x-d.x)<8&&Math.abs(e.y-d.y)<4)) res.push(d); } return res; };
 // ---------- 전투 지형 타일 ----------
 RM.tileHash=function(f,x,y){ let h=0; for(let r=0;r<32;r+=1){ const o=(y+r)*W+x; for(let c=0;c<32;c+=2) h=(Math.imul(h,16777619)^f[o+c])|0; } return h; };
-RM.detectTiles=function(f){ const out=[]; if(!RM.tileMap.size) return out; for(let c=0;c<13;c++){ const oy=(c%2)*16; for(let y=oy;y+32<=H;y+=32){ const h=RM.tileHash(f,c*32,y); const t=RM.tileMap.get(h); if(t) out.push({x:c*32,y,img:t}); } } return out; };
+RM.terrFull=new Map(); RM.terrQ=new Map();
+RM.qHash=function(f,x,y){ let h=0; for(let r=0;r<16;r++){ const o=(y+r)*W+x; for(let c=0;c<16;c+=2) h=(Math.imul(h,16777619)^f[o+c])|0; } return h; };
+RM.loadTerrain=function(list,base){ for(const e of list){ const im=new Image(); im.src=base+e.file; const t={name:e.name,img:im,raw:Uint32Array.from(e.raw.map(v=>v>>>0))}; RM.terrFull.set(e.hash,t); if(!e.name.startsWith('fire')) RM.terrQ.set(e.q,t); } };
+RM.detectTiles=function(f){ const out=[]; const useT=RM.terrFull.size>0; if(!useT&&!RM.tileMap.size) return out;
+  for(let c=0;c<13;c++){ const oy=(c%2)*16; for(let y=oy;y+32<=H;y+=32){ const x=c*32, h=RM.tileHash(f,x,y);
+    if(useT){ const t=RM.terrFull.get(h); if(t){ out.push({x,y,img:t.img,h,fit:1}); continue; }
+      const b=RM.terrQ.get(RM.qHash(f,x,y)); if(b){ const m=new Uint8ClampedArray(32*32*4); let n=0; for(let r=0;r<32;r++){ const o=(y+r)*W+x; for(let k=0;k<32;k++){ if((f[o+k]>>>0)!==b.raw[r*32+k]){ m[(r*32+k)*4+3]=255; n++; } } }
+        out.push({x,y,img:b.img,h,fit:1,mask:m,mn:n}); continue; } }
+    else { const t=RM.tileMap.get(h); if(t) out.push({x,y,img:t,h}); } } }
+  return out; };
 RM.isBattle=function(f){ // 전투 화면: 오른쪽 위 흰 제목칸 + 왼쪽 지도 영역이 타일로 채워짐
   const white=EGA32[7]; let w=0; for(let x=430;x<630;x+=10) if(f[20*W+x]===white) w++; let lw=0; for(let x=300;x<410;x+=10) if(f[20*W+x]===white) lw++;
   return w>=15&&lw<4&&RM.detectTiles(f).length>=8; };
@@ -93,7 +102,7 @@ RM.render=function(rgba){ // rgba: Uint8Array(640*400*4)
   else draw(prog3,fb[0].t,null,{});
   // 교체 대상: 기존 항목은 즉시 재검증, 전체 탐색은 0.12초 간격
   det.faces=det.faces.filter(d=>o.hdFaces&&matchFace(f32,d.x,d.y,d.i,d.mir));
-  det.tiles=det.tiles.filter(t=>o.hdTiles&&RM.tileMap.get(RM.tileHash(f32,t.x,t.y))===t.img);
+  det.tiles=det.tiles.filter(t=>o.hdTiles&&RM.tileHash(f32,t.x,t.y)===t.h);
   det.patches=det.patches.filter(p=>o.hdTiles&&RM.patchHash(f32,p.x,p.y,p.w,p.h)===p.hash);
   det.text=det.text.filter(g=>f32[g.p1]===g.fg&&f32[g.p0]===g.bg&&f32[g.p2]===g.bg);
   det.bars=det.bars.filter(b=>barHash(f32,b)===b.hs);
@@ -115,7 +124,15 @@ function drawOverlay(){ const cw=ovc.width,ch=ovc.height,sx=cw/W,sy=ch/H; ovx.cl
     if(p.fit){ const iw=im.naturalWidth,ih=im.naturalHeight,ra=dw/dh; let cw=iw,ch=ih; if(iw/ih>ra) cw=ih*ra; else ch=iw/ra; ovx.drawImage(im,(iw-cw)/2,(ih-ch)*0.3,cw,ch,p.x*sx,p.y*sy,dw,dh); }
     else ovx.drawImage(im,p.x*sx,p.y*sy,dw,dh); }
   const M=MD(); if(M&&det.map) M.drawMap(ovx,sx,sy,det.map);
-  for(const t of det.tiles){ ovx.drawImage(t.img,t.x*sx,t.y*sy,32*sx+0.5,32*sy+0.5); }
+  for(const t of det.tiles){ const im=t.img; if(!(im.complete&&im.naturalWidth)) continue; const X=t.x*sx,Y=t.y*sy,w=32*sx+0.5,h=32*sy+0.5;
+    let cx=0,cy=0,cw=im.naturalWidth,ch=im.naturalHeight; if(t.fit){ const ra=w/h; if(cw/ch>ra) cw=ch*ra; else ch=cw/ra; cx=(im.naturalWidth-cw)/2; cy=(im.naturalHeight-ch)/2; }
+    if(!t.mask){ ovx.drawImage(im,cx,cy,cw,ch,X,Y,w,h); continue; }
+    const tc=RM._tc||(RM._tc=document.createElement('canvas')), mc=RM._mc||(RM._mc=document.createElement('canvas'));
+    const W2=Math.ceil(w),H2=Math.ceil(h); if(tc.width!==W2||tc.height!==H2){ tc.width=W2; tc.height=H2; } mc.width=32; mc.height=32;
+    mc.getContext('2d').putImageData(new ImageData(t.mask,32,32),0,0);
+    const tx=tc.getContext('2d'); tx.globalCompositeOperation='source-over'; tx.clearRect(0,0,W2,H2); tx.drawImage(im,cx,cy,cw,ch,0,0,w,h);
+    tx.globalCompositeOperation='destination-out'; tx.imageSmoothingEnabled=false; tx.drawImage(mc,0,0,32,32,0,0,w,h); tx.globalCompositeOperation='source-over';
+    ovx.drawImage(tc,X,Y); }
   if(M){ let bars=det.bars; if(det.map) bars=bars.filter(b=>!(b.x>=7&&b.x+b.w<=290&&b.y>=23&&b.y+b.h<=386)).concat([{x:0,y:0,w:640,h:7,hz:1},{x:0,y:393,w:640,h:7,hz:1},{x:0,y:0,w:7,h:400,hz:0},{x:633,y:0,w:7,h:400,hz:0}]);
     if(det.tiles.length>20) bars=bars.filter(b=>b.x>=414||(b.x+b.w<=2));
     bars=bars.filter(b=>!det.patches.some(d=>b.x<d.x+d.w&&b.x+b.w>d.x&&b.y<d.y+d.h&&b.y+b.h>d.y));
