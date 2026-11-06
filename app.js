@@ -123,6 +123,7 @@ async function loadAssets(){ try{ const [fj,mj]=await Promise.all([fetch('font.j
   try{ await document.fonts.load("500 20px 'Noto Sans KR'"); await document.fonts.load("700 20px 'Noto Sans KR'"); }catch(e){}
   const kao=unb64((await (await fetch('kaodata.json')).json()).b64); RM.loadFaces(kao);
   for(let i=0;i<219;i++){ const im=new Image(); im.decoding='async'; im.src='faces/f'+String(i).padStart(3,'0')+'.webp'; RM.faceImgs[i]=im; }
+  try{ const em=await (await fetch('events/manifest.json')).json(); for(const p of em){ const im=new Image(); im.src='events/'+p.file; RM.patches.push({x:p.x,y:p.y,w:p.w,h:p.h,hash:p.hash,img:im,fit:1}); } }catch(e){}
   try{ const pm=await (await fetch('patches/manifest.json')).json(); for(const p of pm){ const im=new Image(); im.src='patches/'+p.file; RM.patches.push({x:p.x,y:p.y,w:p.w,h:p.h,hash:p.hash,img:im}); } }catch(e){}
   try{ const man=await (await fetch('tiles/manifest.json')).json(); for(const h in man){ const im=new Image(); im.src='tiles/'+man[h]; RM.tileMap.set(+h,im); } }catch(e){} }
 async function start(){ if(S.started) return; S.started=true; const st=$('#start'); st.querySelector('.go').textContent='불러오는 중…';

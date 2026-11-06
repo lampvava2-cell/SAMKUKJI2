@@ -123,8 +123,7 @@ function drawOverlay(){ const cw=ovc.width,ch=ovc.height,sx=cw/W,sy=ch/H; ovx.cl
     if(bars.length) M.drawFrames(ovx,sx,sy,bars); }
   if(M&&det.text.length) M.drawText(ovx,sx,sy,det.map?det.text.filter(g=>!(g.x<290&&g.y>=36)):det.text);
   for(const d of det.faces){ const img=RM.faceImgs[d.i]; if(!img||!img.complete||!img.naturalWidth) continue; const x=d.x*sx,y=d.y*sy,w=64*sx,h=80*sy;
-    const iw=img.naturalWidth,ih=img.naturalHeight,ra=w/h; let cw=iw,ch=ih; if(iw/ih>ra) cw=ih*ra; else ch=iw/ra; const cx=(iw-cw)/2,cy=(ih-ch)*0.2;
-    if(d.mir){ ovx.save(); ovx.translate(x+w,y); ovx.scale(-1,1); ovx.drawImage(img,cx,cy,cw,ch,0,0,w,h); ovx.restore(); } else ovx.drawImage(img,cx,cy,cw,ch,x,y,w,h); } }
+    if(d.mir){ ovx.save(); ovx.translate(x+w,y); ovx.scale(-1,1); ovx.drawImage(img,0,0,w,h); ovx.restore(); } else ovx.drawImage(img,x,y,w,h); } }
 RM.redrawOverlay=drawOverlay;
 RM.resize=function(cssW,cssH,dpr){ const w=Math.round(cssW*dpr),h=Math.round(cssH*dpr); for(const c of [glc,ovc]){ c.width=w;c.height=h;c.style.width=cssW+'px';c.style.height=cssH+'px'; } };
 })();
