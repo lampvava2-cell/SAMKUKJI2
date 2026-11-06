@@ -111,16 +111,20 @@ function probe(f,g){ // 검증용 화소 3개: 글자색 1, 배경색 2
   let p1=-1; for(let r=0;r<13&&p1<0;r++) for(let i=0;i<g.w;i++){ const k=(g.y+r*2)*W+g.x+i; if(f[k]===g.fg){p1=k;break;} }
   if(p1<0) return null; g.p1=p1; g.p0=g.y*W+g.x; g.p2=(g.y+24)*W+g.x+g.w-1; if(f[g.p0]!==g.bg) g.p0=p1; if(f[g.p2]!==g.bg) g.p2=g.p0; return g; }
 function drawOverlay(){ const cw=ovc.width,ch=ovc.height,sx=cw/W,sy=ch/H; ovx.clearRect(0,0,cw,ch); ovx.imageSmoothingQuality='high';
-  for(const p of det.patches){ if(p.img.complete&&p.img.naturalWidth) ovx.drawImage(p.img,p.x*sx,p.y*sy,p.w*sx,p.h*sy); }
+  for(const p of det.patches){ const im=p.img; if(!(im.complete&&im.naturalWidth)) continue; const dw=p.w*sx,dh=p.h*sy;
+    if(p.fit){ const iw=im.naturalWidth,ih=im.naturalHeight,ra=dw/dh; let cw=iw,ch=ih; if(iw/ih>ra) cw=ih*ra; else ch=iw/ra; ovx.drawImage(im,(iw-cw)/2,(ih-ch)*0.3,cw,ch,p.x*sx,p.y*sy,dw,dh); }
+    else ovx.drawImage(im,p.x*sx,p.y*sy,dw,dh); }
   const M=MD(); if(M&&det.map) M.drawMap(ovx,sx,sy,det.map);
   for(const t of det.tiles){ ovx.drawImage(t.img,t.x*sx,t.y*sy,32*sx+0.5,32*sy+0.5); }
   if(M){ let bars=det.bars; if(det.map) bars=bars.filter(b=>!(b.x>=7&&b.x+b.w<=290&&b.y>=23&&b.y+b.h<=386)).concat([{x:0,y:0,w:640,h:7,hz:1},{x:0,y:393,w:640,h:7,hz:1},{x:0,y:0,w:7,h:400,hz:0},{x:633,y:0,w:7,h:400,hz:0}]);
     if(det.tiles.length>20) bars=bars.filter(b=>b.x>=414||(b.x+b.w<=2));
+    bars=bars.filter(b=>!det.patches.some(d=>b.x<d.x+d.w&&b.x+b.w>d.x&&b.y<d.y+d.h&&b.y+b.h>d.y));
     bars=bars.filter(b=>!det.faces.some(d=>b.x<d.x+64&&b.x+b.w>d.x&&b.y<d.y+80&&b.y+b.h>d.y));
     if(bars.length) M.drawFrames(ovx,sx,sy,bars); }
   if(M&&det.text.length) M.drawText(ovx,sx,sy,det.map?det.text.filter(g=>!(g.x<290&&g.y>=36)):det.text);
   for(const d of det.faces){ const img=RM.faceImgs[d.i]; if(!img||!img.complete||!img.naturalWidth) continue; const x=d.x*sx,y=d.y*sy,w=64*sx,h=80*sy;
-    if(d.mir){ ovx.save(); ovx.translate(x+w,y); ovx.scale(-1,1); ovx.drawImage(img,0,0,w,h); ovx.restore(); } else ovx.drawImage(img,x,y,w,h); } }
+    const iw=img.naturalWidth,ih=img.naturalHeight,ra=w/h; let cw=iw,ch=ih; if(iw/ih>ra) cw=ih*ra; else ch=iw/ra; const cx=(iw-cw)/2,cy=(ih-ch)*0.2;
+    if(d.mir){ ovx.save(); ovx.translate(x+w,y); ovx.scale(-1,1); ovx.drawImage(img,cx,cy,cw,ch,0,0,w,h); ovx.restore(); } else ovx.drawImage(img,cx,cy,cw,ch,x,y,w,h); } }
 RM.redrawOverlay=drawOverlay;
 RM.resize=function(cssW,cssH,dpr){ const w=Math.round(cssW*dpr),h=Math.round(cssH*dpr); for(const c of [glc,ovc]){ c.width=w;c.height=h;c.style.width=cssW+'px';c.style.height=cssH+'px'; } };
 })();
