@@ -2,14 +2,14 @@
 (function(){
 const A={ctx:null,on:{sfx:true,bgm:true},vol:{sfx:0.85,bgm:0.5},mode:null,timer:null,cache:{},cool:{}};
 window.Sound=A;
-A.init=function(){ if(A.ctx){ if(A.ctx.state==='suspended') A.ctx.resume().catch(()=>{}); return; }
-  try{ const C=window.AudioContext||window.webkitAudioContext; const c=A.ctx=new C();
+A.init=function(ext){ if(A.ctx&&!ext){ if(A.ctx.state==='suspended') A.ctx.resume().catch(()=>{}); return; }
+  try{ const C=window.AudioContext||window.webkitAudioContext; const c=A.ctx=ext||new C(); A.cache={};
     A.master=c.createGain(); A.master.gain.value=0.9; const comp=c.createDynamicsCompressor(); comp.threshold.value=-12; comp.ratio.value=3.5; comp.attack.value=0.01;
     A.master.connect(comp); comp.connect(c.destination);
     A.sfxG=c.createGain(); A.sfxG.gain.value=A.vol.sfx; A.sfxG.connect(A.master);
     A.bgmG=c.createGain(); A.bgmG.gain.value=A.vol.bgm; A.bgmG.connect(A.master);
     A.rev=c.createConvolver(); A.rev.buffer=impulse(3.0,2.6); A.revG=c.createGain(); A.revG.gain.value=0.32; A.rev.connect(A.revG); A.revG.connect(A.master);
-    if(A.pending){ const m=A.pending; A.pending=null; A.music(m); } }catch(e){ A.ctx=null; } };
+    if(A.pending){ const m=A.pending; A.pending=null; A.music(m); } setTimeout(()=>A.loadSamples&&A.loadSamples(),0); }catch(e){ A.ctx=null; } };
 A.set=function(k,on){ A.on[k]=on; if(!A.ctx) return; (k==='sfx'?A.sfxG:A.bgmG).gain.setTargetAtTime(on?A.vol[k]:0,A.ctx.currentTime,0.15); };
 function impulse(sec,dec){ const c=A.ctx,n=c.sampleRate*sec,b=c.createBuffer(2,n,c.sampleRate); for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,dec)*(i<c.sampleRate*0.01?i/(c.sampleRate*0.01):1); } return b; }
 function noiseBuf(){ if(A.cache.n) return A.cache.n; const c=A.ctx,n=c.sampleRate*2,b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1; return A.cache.n=b; }
@@ -92,7 +92,7 @@ const SFX={
   death(t){ gong(t,0.5,{f:70}); bell(hz('D5'),t+0.6,0.1); },
   move(t){ for(let i=0;i<4;i++) taiko(t+i*0.11,0.2,{f:170}); noiseHit(t,0.4,0.1,'lowpass',500,0.7,{a:0.06}); },
 };
-A.sfx=function(name){ if(!A.ctx||!A.on.sfx) return; const f=SFX[name]; if(!f) return; const now=A.ctx.currentTime; if(A.cool[name]&&now<A.cool[name]) return; A.cool[name]=now+(name==='tap'||name==='select'?0.03:0.6); try{ f(now+0.02); }catch(e){} };
+A.sfx=function(name){ if(!A.ctx||!A.on.sfx) return; const f=SFX[name]; const smp=A.samples[name]; if(!f&&!smp) return; const now=A.ctx.currentTime; if(A.cool[name]&&now<A.cool[name]) return; A.cool[name]=now+(name==='tap'||name==='select'?0.03:0.6); try{ if(smp) playSample(smp,A.sfxG,now+0.01); else f(now+0.02); }catch(e){} };
 // ---------- 상황 큐: 화면 글자로 효과음 선택 ----------
 const CUES=[[/홍수|태풍/,'water',1],[/역병/,'plague',1],[/메뚜기/,'locust',1],[/반란/,'riot',1],[/사망|세상을 떠|목을 (벤|잘)/,'death',1],
   [/일기토|일대일/,'duel'],[/함락시켰|승리입니다|격퇴하였|점령/,'fanfare'],[/함락하였|패배|빼앗겼/,'defeat'],[/동맹이 성립|혼인이 성립|성공입니다|성공하였|성공이다|등용에 성공|부하가 되었/,'good'],
@@ -148,7 +148,27 @@ function playBar(th,b,t){ const s=60/th.bpm/4; const ch=th.chords[b%th.chords.le
 let seqBar=0, nextT=0, curTheme=null, loops=0;
 function tick(){ const c=A.ctx; if(!c||!curTheme) return; while(nextT<c.currentTime+0.4){ playBar(curTheme,seqBar,nextT); nextT+=60/curTheme.bpm*4; seqBar++;
     if(seqBar>=curTheme.bars){ seqBar=0; loops++; if(A.mode==='map'){ curTheme=loops%2?T.map2:T.map; } } } }
-A.music=function(mode){ if(!A.ctx){ A.pending=mode; return; } if(A.mode===mode) return; A.mode=mode; clearInterval(A.timer);
-  if(!mode){ curTheme=null; return; } curTheme=T[mode]||T.map; seqBar=0; loops=0; nextT=A.ctx.currentTime+0.15; A.timer=setInterval(tick,120); tick(); };
-A.themes=T;
+A.music=function(mode){ if(!A.ctx){ A.pending=mode; return; } if(A.mode===mode) return; A.mode=mode; clearInterval(A.timer); stopBgmSample();
+  if(!mode){ curTheme=null; return; }
+  const bs=A.samples['bgm_'+mode]||(mode==='map'&&A.samples.bgm_map2);
+  if(bs){ curTheme=null; startBgmSample(mode); return; } curTheme=T[mode]||T.map; seqBar=0; loops=0; nextT=A.ctx.currentTime+0.15; A.timer=setInterval(tick,120); tick(); };
+
+// ---------- 사용자 사운드 파일 (sounds/ 폴더) ----------
+A.samples={}; A.userVol={};
+function rmsGain(buf,target){ let sum=0,n=0; for(let ch=0;ch<buf.numberOfChannels;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<d.length;i+=16){ sum+=d[i]*d[i]; n++; } }
+  const r=Math.sqrt(sum/Math.max(1,n)); return r>1e-5?Math.min(4,Math.max(0.05,target/r)):1; }
+function playSample(sm,dest,t,loop){ const c=A.ctx,src=c.createBufferSource(),g=c.createGain(); src.buffer=sm.buf; src.loop=!!loop; g.gain.value=sm.gain; src.connect(g); g.connect(dest); src.start(t); return {src,g}; }
+let bgmNow=null;
+function stopBgmSample(){ if(!bgmNow) return; const c=A.ctx,{src,g}=bgmNow; bgmNow=null; try{ g.gain.setTargetAtTime(0,c.currentTime,0.25); src.stop(c.currentTime+1.2); }catch(e){} }
+function startBgmSample(mode){ const c=A.ctx; let seq=mode==='map'?['bgm_map','bgm_map2'].filter(k=>A.samples[k]):['bgm_'+mode]; let k=0;
+  const play=()=>{ if(A.mode!==mode) return; const sm=A.samples[seq[k%seq.length]]; k++; const p=playSample(sm,A.bgmG,c.currentTime+0.05,seq.length===1);
+    p.g.gain.setValueAtTime(0.0001,c.currentTime); p.g.gain.linearRampToValueAtTime(sm.gain,c.currentTime+1.0); bgmNow=p; if(seq.length>1) p.src.onended=()=>{ if(bgmNow===p){ bgmNow=null; play(); } }; };
+  play(); }
+A.loadSamples=async function(base){ base=base||'sounds/'; const c=A.ctx; if(!c||A._loading) return; A._loading=true;
+  try{ const r=await fetch(base+'volume.json'); if(r.ok) A.userVol=await r.json(); }catch(e){}
+  const names=[...Object.keys(SFX),...Object.keys(T).map(k=>'bgm_'+k)];
+  await Promise.all(names.map(async nm=>{ for(const ext of ['mp3','wav','ogg','m4a']){ try{ const r=await fetch(base+nm+'.'+ext); if(!r.ok) continue; const ab=await r.arrayBuffer(); if(ab.byteLength<64) continue;
+        const buf=await c.decodeAudioData(ab); const isB=nm.startsWith('bgm_'); A.samples[nm]={buf,gain:rmsGain(buf,isB?0.09:0.16)*(+A.userVol[nm]||1)}; return; }catch(e){} } }));
+  A.loaded=Object.keys(A.samples); if(A.mode){ const m=A.mode; A.mode=null; A.music(m); } };
+A.themes=T; A.SFX=SFX; A.I={zheng,flute,erhu,pad,bass,brass,taiko,rim,cymbal,gong,bell,noiseHit,metal,hz};
 })();
