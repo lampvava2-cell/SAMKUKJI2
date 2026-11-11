@@ -39,6 +39,11 @@ html,body{margin:0;height:100%;background:#07090c;color:#e9e4d8;font-family:'Not
 }
 #start{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 35%,#2a1d14 0%,#07090c 65%);transition:opacity .5s;cursor:pointer}
 #start.off{opacity:0;pointer-events:none}
+#start #startLogo{display:flex;flex-direction:column;align-items:center}
+#start.bg{background-size:cover;background-position:center}
+#start img.logo{max-width:80vw;max-height:40vh;margin-bottom:24px;filter:drop-shadow(0 4px 12px #000a)}
+#start.bg .note{color:#d9dde3;text-shadow:0 1px 3px #000}
+
 #start .seal{width:70px;height:70px;border:3px solid #c8463c;color:#c8463c;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Noto Serif KR',serif;font-weight:900;font-size:28px;transform:rotate(-6deg);margin-bottom:16px}
 #start h1{font-family:'Noto Serif KR',serif;font-weight:900;font-size:50px;margin:0;letter-spacing:5px;background:linear-gradient(180deg,#fff3cf,#d8a94b 55%,#8a5a1c);-webkit-background-clip:text;background-clip:text;color:transparent}
 #start .sub{font-family:'Noto Serif KR',serif;color:var(--gold);letter-spacing:9px;margin:6px 0 30px;font-size:13px}
@@ -72,7 +77,7 @@ html,body{margin:0;height:100%;background:#07090c;color:#e9e4d8;font-family:'Not
     <div id="pad"></div>
   </div>
 </div>
-<div id="start"><div class="seal">三國</div><h1>삼국지 Ⅱ</h1><div class="sub">REMASTER</div><button class="go">터치해서 시작</button>
+<div id="start"><div id="startLogo"><div class="seal">三國</div><h1>삼국지 Ⅱ</h1><div class="sub">REMASTER</div></div><button class="go">터치해서 시작</button>
   <div class="note">원작 게임을 그대로 실행합니다 · 그래픽과 사운드만 리마스터<br>가로로 돌리면 화면이 더 커집니다</div></div>
 <div id="menu"><div class="sheet"><h2>설정 <button class="mclose">✕</button></h2><div class="mbody"></div></div></div>
 <div id="txtbox"><div class="b"><div style="font-weight:700">문자 입력 (파일명 등)</div><input id="txt" maxlength="8" autocomplete="off" autocapitalize="characters"><div style="display:flex;gap:8px;justify-content:flex-end"><button id="txtx">취소</button><button id="txtgo" class="g">입력 + Enter</button></div></div></div>
@@ -82,5 +87,10 @@ html,body{margin:0;height:100%;background:#07090c;color:#e9e4d8;font-family:'Not
 <script src="modern.js"></script>
 <script src="remaster.js"></script>
 <script src="app.js"></script>
+<script>
+(function(){ const st=document.getElementById('start'); const tryImg=(src,ok)=>{ const im=new Image(); im.onload=()=>ok(im); im.src=src; };
+  tryImg('ui/splash.webp',()=>{ st.style.backgroundImage="linear-gradient(#0006,#0008),url('ui/splash.webp')"; st.classList.add('bg'); });
+  tryImg('ui/logo.webp',im=>{ im.className='logo'; const L=document.getElementById('startLogo'); L.innerHTML=''; L.appendChild(im); }); })();
+</script>
 </body>
 </html>
