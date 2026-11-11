@@ -6,9 +6,9 @@ const K={ENTER:257,ESC:256,BS:259,SPACE:32,UP:265,DOWN:264,LEFT:263,RIGHT:262,KP
 const S={ci:null,frame:null,dirty:false,scene:'title',sound:'modern',keysSince:0,db:null,uid:null,dl:null,lastDate:0,lastDuel:false,started:false};
 window.APP=S;
 const LS='sam2rm2_';
-const loadOpt=()=>{ try{ const o=JSON.parse(localStorage.getItem(LS+'opt')||'null'); if(o){ Object.assign(RM.opts,o.gfx||{}); if(o.modern&&window.Modern) Object.assign(Modern.opts,o.modern); if(o.sound) S.sound=o.sound; if(o.tapEnter!==undefined) S.tapEnter=o.tapEnter; if(o.fastMsg!==undefined) S.fastMsg=o.fastMsg; } }catch(e){} };
-const saveOpt=()=>{ try{ localStorage.setItem(LS+'opt',JSON.stringify({gfx:RM.opts,modern:window.Modern?Modern.opts:null,sound:S.sound,tapEnter:S.tapEnter,fastMsg:S.fastMsg})); }catch(e){} };
-S.tapEnter=true; S.fastMsg=true; loadOpt();
+const loadOpt=()=>{ try{ const o=JSON.parse(localStorage.getItem(LS+'opt')||'null'); if(o){ Object.assign(RM.opts,o.gfx||{}); if(o.modern&&window.Modern) Object.assign(Modern.opts,o.modern); if(o.sound) S.sound=o.sound; if(o.tapEnter!==undefined) S.tapEnter=o.tapEnter; } }catch(e){} };
+const saveOpt=()=>{ try{ localStorage.setItem(LS+'opt',JSON.stringify({gfx:RM.opts,modern:window.Modern?Modern.opts:null,sound:S.sound,tapEnter:S.tapEnter})); }catch(e){} };
+S.tapEnter=true; loadOpt();
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),2600); }
 // ---------- 저장소 ----------
 async function storeInit(){ try{ if(window.claude&&window.claude.use){ const [db,user,dl]=await Promise.all([claude.use('db'),claude.use('user'),claude.use('downloads')]); S.dl=dl||null; if(db&&user){ S.uid=await user.id(); S.db=db; } } }catch(e){} }
@@ -103,7 +103,7 @@ function menu(){ const m=$('#menu'); const o=RM.opts;
   m.querySelector('.mbody').innerHTML=
    `<h3>그래픽</h3>`+row('현대 글꼴로 글자 다시 그리기',Modern.opts.text,'m_text')+row('현대식 지도',Modern.opts.map,'m_map')+row('현대식 창 테두리',Modern.opts.frames,'m_frames')+row('고화질 초상화 (AI 업스케일)',o.hdFaces,'hdFaces')+row('고화질 전투 지형',o.hdTiles,'hdTiles')+row('점무늬 제거 (매끈한 색)',o.dedither,'dedither')+row('윤곽 다듬기 (4배 업스케일)',o.smooth,'smooth')+row('색감 보정',o.grade,'grade')+
    `<h3>사운드</h3><div class="mrow" data-f="snd"><span>사운드 모드</span><b class="on">${{modern:'현대 음악·효과음',original:'원작 FM + 현대 음향',off:'끔'}[S.sound]}</b></div>`+
-   `<h3>조작</h3>`+row('화면 터치 = Enter',S.tapEnter,'tap')+row('서신 대기시간 1 · 사신 이동 표시 없음 (고정)',S.fastMsg,'fast')+
+   `<h3>조작</h3>`+row('화면 터치 = Enter',S.tapEnter,'tap')+
    `<h3>세이브</h3><div class="hint">게임 안의 "기능 → 저장"으로 저장하면 자동으로 계정/브라우저에 보관됩니다.</div><div class="mrow" data-f="savenow"><span>지금 보관하기</span><b class="on">실행</b></div><div class="mrow" data-f="export"><span>세이브 파일 내보내기 (.zip)</span><b class="on">실행</b></div><div class="mrow" data-f="import"><span>세이브 파일 가져오기</span><b class="on">선택</b></div><div class="mrow" data-f="reset"><span>보관된 세이브 지우고 원본으로</span><b>실행</b></div>`;
   m.classList.add('on'); }
 $('#menuBtn').onclick=()=>{ MS.sfx('open'); menu(); };
@@ -113,13 +113,11 @@ $('#menu').addEventListener('click',async e=>{ if(e.target.id==='menu'||e.target
   if(f.startsWith('m_')){ const k=f.slice(2); Modern.opts[k]=!Modern.opts[k]; saveOpt(); lastF=null; layout(); }
   if(f==='snd'){ S.sound={modern:'original',original:'off',off:'modern'}[S.sound]; saveOpt(); applySound(); }
   if(f==='tap'){ S.tapEnter=!S.tapEnter; saveOpt(); }
-  if(f==='fast'){ S.fastMsg=!S.fastMsg; saveOpt(); applyFast(); }
   if(f==='savenow'){ await saveChanges(); toast('세이브를 보관했습니다.'); }
   if(f==='export'){ try{ const p=await S.ci.persist(); if(S.dl){ await S.dl.save({filename:'삼국지2_세이브.zip',data:p}); toast('내보냈습니다.'); } else toast('이 화면에서는 내보내기를 쓸 수 없습니다.'); }catch(err){ toast('내보내기 취소/실패'); } }
   if(f==='import'){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.zip'; inp.onchange=async()=>{ const u=new Uint8Array(await inp.files[0].arrayBuffer()); const s=b64(u); try{ localStorage.setItem(LS+'fs',s);}catch(e){} if(S.db){ try{ await S.db.doc('data/users/'+S.uid+'/fs/latest').set({b64:s,t:Date.now()}); }catch(e){} } toast('가져왔습니다. 다시 시작합니다…'); setTimeout(()=>location.reload(),900); }; inp.click(); }
   if(f==='reset'){ if(S.db){ try{ await S.db.doc('data/users/'+S.uid+'/fs/latest').delete(); }catch(e){} } try{ localStorage.removeItem(LS+'fs'); }catch(e){} toast('초기화했습니다. 다시 시작합니다…'); setTimeout(()=>location.reload(),900); }
   menu(); });
-function applyFast(){ try{ S.ci&&S.ci.transport&&S.ci.transport.sendMessageToServer('rm-cfg',{on:!!S.fastMsg,msg:1,env:0}); }catch(e){} }
 // ---------- 시작 ----------
 async function loadAssets(){ try{ const [fj,mj]=await Promise.all([fetch('font.json').then(r=>r.json()),fetch('mapdata.json').then(r=>r.json())]); Modern.loadFont(fj); Modern.loadMap(mj); }catch(e){ console.warn(e); }
   try{ await document.fonts.load("500 20px 'Noto Sans KR'"); await document.fonts.load("700 20px 'Noto Sans KR'"); }catch(e){}
@@ -137,7 +135,7 @@ async function start(){ if(S.started) return; S.started=true; const st=$('#start
     const game=unb64((await (await fetch('game.json')).json()).b64);
     const ch=await loadChanges(); const bundles=ch?[game,ch]:[game];
     let ci; try{ ci=await emulators.dosboxWorker(bundles); }catch(e){ console.warn('worker 실패, direct 사용',e); ci=await emulators.dosboxDirect(bundles); }
-    S.ci=ci; applyFast(); ci.events().onFrame(onFrame); ci.events().onSoundPush(pushSamples);
+    S.ci=ci; ci.events().onFrame(onFrame); ci.events().onSoundPush(pushSamples);
     if(ci.directSound){ /* direct 모드는 링버퍼 폴링 */ const ds=ci.directSound; let last=0; setInterval(()=>{},1000); }
     st.classList.add('off'); setTimeout(()=>st.remove(),600); applySound(); if(ch) toast('보관된 세이브 파일을 불러왔습니다.');
   }catch(e){ st.querySelector('.go').textContent='시작 실패: '+e.message; console.error(e); S.started=false; } }
