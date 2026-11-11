@@ -48,8 +48,21 @@ if (worker) {
                 module.callMain([sessionId]);
             };
 
+            self.__rmModule = module;
             new WDOSBOX(module);
             return;
         }
     };
 }
+
+// ---- 삼국지2 리마스터: 게임 설정값 고정 (서신 대기시간 / 사신 이동) ----
+if (typeof importScripts === "function") { (function(){
+  let cfg={on:false,msg:1,env:0}, M=-1, lastScan=0;
+  const SIG=Array.from('GRPDATA.DAT\0T\0HEXDATA.DAT\0T\0KAODATA').map(c=>c.charCodeAt(0)), OFF=17979;
+  const match=(h,p)=>{ for(let i=0;i<SIG.length;i++) if(h[p+i]!==SIG[i]) return false; return true; };
+  const find=(h)=>{ const f=SIG[0]; for(let p=0;p<h.length-64;p++){ if(h[p]===f&&match(h,p)) return p-OFF; } return -1; };
+  self.addEventListener('message',e=>{ const d=e.data; if(d&&d.name==='rm-cfg'&&d.props) Object.assign(cfg,d.props); });
+  setInterval(()=>{ if(!cfg.on) return; const m=self.__rmModule; const h=m&&m.HEAPU8; if(!h) return;
+    if(M<0||!match(h,M+OFF)){ const t=Date.now(); if(t-lastScan<4000) return; lastScan=t; M=find(h); if(M<0) return; }
+    if(h[M]!==cfg.msg) h[M]=cfg.msg; if(h[M+1]!==cfg.env) h[M+1]=cfg.env; },1000);
+})(); }
